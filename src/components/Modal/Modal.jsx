@@ -1,36 +1,38 @@
-import { Component } from 'react';
+import {useEffect } from 'react';
 import style from './Modal.module.css';
-import PropTypes from "prop-types"
+import PropTypes from 'prop-types';
 
-export class Modal extends Component {
-  static propTypes = {
-    originalImg: PropTypes.string,
-    onClose: PropTypes.func
-  }
-  componentDidMount() {
-    window.addEventListener('keydown', this.handleModalClose);
-  }
-  handleModalClose = e => {
-    if (e.code === 'Escape') {
-      this.props.onClose();
-    }
-  };
-  handleModalEvent = e => {
+
+export const Modal = ({ onClose, originalImg }) => {
+  const handleModalEvent = e => {
     const { nodeName: currentElement } = e.target;
     if (currentElement !== 'IMG') {
-      this.props.onClose();
+      onClose();
     }
   };
-  componentWillUnmount() {
-    window.removeEventListener('keydown', this.handleModalClose);
-  }
-  render() {
-    return (
-      <div className={style.Overlay} onClick={this.handleModalEvent}>
-        <div className={style.Modal}>
-          <img src={this.props.originalImg} alt="" />
-        </div>
+  useEffect(() => {
+    const handleModalClose = e => {
+      if (e.code !== 'Escape') {
+        return;
+      }
+      onClose();
+    };
+    window.addEventListener('keydown', handleModalClose);
+    return () => {
+      window.removeEventListener('keydown', handleModalClose);
+    };
+  }, []);
+
+  return (
+    <div className={style.Overlay} onClick={handleModalEvent}>
+      <div className={style.Modal}>
+        <img src={originalImg} alt="" />
       </div>
-    );
-  }
-}
+    </div>
+  );
+};
+
+Modal.propTypes = {
+  originalImg: PropTypes.string,
+  onClose: PropTypes.func,
+};

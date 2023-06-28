@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import style from './App.module.css';
 import { Searchbar } from './Searchbar/Searchbar';
 import { Gallery } from './ImageGallery/ImageGallery';
@@ -8,76 +8,72 @@ import { Button } from './Button/Button';
 import { Loader } from './Loader/Loader';
 import { Notify } from 'notiflix';
 
-export class App extends Component {
-  state = {
-    searchResult: '',
-    page: 1,
-    articles: [],
-    totalHits: 0,
-    originalImg: '',
-    isLoading: false,
-    showModal: false,
-  };
+export const App = () => {
+  const [searchResult, setSearchResult] = useState('');
+  const [page, setPage] = useState(1);
+  const [articles, setArticles] = useState([]);
+  const [totalHits, setTotalHist] = useState(0);
+  const [originalImg, setOriginalImg] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
-  async componentDidUpdate(prevProps, prevState) {
-    const { searchResult, page, articles } = this.state;
-    if (prevState.searchResult !== searchResult || prevState.page !== page) {
-      try {
-        this.setState({ isLoading: true });
-        const fetchData = await getData(searchResult, page);
-        const { hits, totalHits } = fetchData.data;
-        if (totalHits === 0) {
-          Notify.failure('Nothing found, try something else');
-        }
-        this.setState({
-          articles: [...articles, ...hits],
-          totalHits: totalHits,
-          isLoading: false,
-        });
-      } catch (error) {
-        console.log(error);
-      }
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    const result = await getData(searchResult, page);
+    const { hits, totalHits: newHits } = result.data;
+    if (newHits === 0) {
+      Notify.failure('Nothing found, try something else');
     }
-  }
-  modalToggle = () => {
-    this.setState(({ showModal }) => ({ showModal: !showModal }));
-  };
-  handleLoadMoreBtnClick = async e => {
-    const { page } = this.state;
-    this.setState({ page: page + 1 });
-  };
-  handleOpenModal = e => {
-    this.setState({ originalImg: e.currentTarget.dataset.source });
-    this.modalToggle();
-  };
-  handleSubmitBtn = e => {
+    setArticles(prevArt => [...prevArt, ...hits]);
+    setTotalHist(newHits);
+    setIsLoading(false);
+  }, [searchResult, page]);
+
+  useEffect(() => {
+    if (searchResult === '') {
+      return;
+    }
+    fetchData();
+  }, [fetchData, searchResult]);
+
+  const modalToggle = useCallback(() => {
+    setShowModal(!showModal);
+  }, [showModal]);
+
+  const handleSubmitBtn = e => {
     e.preventDefault();
     const { value } = e.target.elements.search;
-
-    this.setState(prevState => {
-      if (prevState.searchResult !== value) {
-        return {
-          searchResult: value.trim(),
-          articles: [],
-        };
-      }
-    });
+    if (value === searchResult) {
+      return;
+    }
+    setSearchResult(value.trim());
+    setArticles([]);
   };
-  render() {
-    const { articles, originalImg, showModal, totalHits, isLoading } =
-      this.state;
-    return (
-      <div className={style.App}>
-        <Searchbar onSubmit={this.handleSubmitBtn} />
-        <Gallery articles={articles} onClick={this.handleOpenModal} />
-        {showModal && (
-          <Modal originalImg={originalImg} onClose={this.modalToggle} />
-        )}
-        {isLoading && <Loader />}
-        {articles.length !== totalHits && (
-          <Button onClick={this.handleLoadMoreBtnClick} />
-        )}
-      </div>
-    );
-  }
-}
+
+  const handleLoadMoreBtnClick = useCallback(
+    async e => {
+      setPage(page + 1);
+    },
+    [page]
+  );
+
+  const handleOpenModal = useCallback(
+    e => {
+      setOriginalImg(e.currentTarget.dataset.source);
+      modalToggle();
+    },
+    [modalToggle]
+  );
+
+  return (
+    <div className={style.App}>
+      <Searchbar onSubmit={handleSubmitBtn} />
+      <Gallery articles={articles} onClick={handleOpenModal} />
+      {showModal && <Modal originalImg={originalImg} onClose={modalToggle} />}
+      {isLoading && <Loader />}
+      {articles.length !== totalHits && (
+        <Button onClick={handleLoadMoreBtnClick} />
+      )}
+    </div>
+  );
+};
