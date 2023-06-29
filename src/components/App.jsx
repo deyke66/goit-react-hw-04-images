@@ -17,24 +17,29 @@ export const App = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    const result = await getData(searchResult, page);
-    const { hits, totalHits: newHits } = result.data;
-    if (newHits === 0) {
-      Notify.failure('Nothing found, try something else');
-    }
-    setArticles(prevArt => [...prevArt, ...hits]);
-    setTotalHist(newHits);
-    setIsLoading(false);
-  }, [searchResult, page]);
 
   useEffect(() => {
     if (searchResult === '') {
       return;
     }
-    fetchData();
-  }, [fetchData, searchResult]);
+    const fetchData = async (value, page) => {
+      try {
+        setIsLoading(true);
+        const result = await getData(value, page);
+        const { hits, totalHits: newHits } = result.data;
+        if (newHits === 0) {
+          Notify.failure('Nothing found, try something else');
+        }
+        setArticles(prevArt => [...prevArt, ...hits]);
+        setTotalHist(newHits);
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData(searchResult, page);
+  }, [searchResult, page]);
 
   const modalToggle = useCallback(() => {
     setShowModal(!showModal);
@@ -48,6 +53,7 @@ export const App = () => {
     }
     setSearchResult(value.trim());
     setArticles([]);
+    setPage(1)
   };
 
   const handleLoadMoreBtnClick = useCallback(
